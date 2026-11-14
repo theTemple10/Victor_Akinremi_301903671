@@ -1,0 +1,46 @@
+MIT8103 Advanced Database Systems — Continuous Assessment Summary
+
+Student: Victor Akinremi  
+Student ID: 301903671  
+Cohort: September 2026  
+Case study: MivaLearn registration and results portal
+
+Case study and implementation
+
+This portfolio uses MivaLearn, a fictional university portal for student records, course offerings, registration, assessment, and results. The sample identities and records are synthetic. PostgreSQL is the transactional store; MongoDB is used for a read-oriented transcript projection. The complete source, run instructions, evidence notes, and workflow are in the public repository: https://github.com/theTemple10/Victor_Akinremi_301903671.
+
+The relational model separates department, student, course, academic term, offering, enrolment, assessment, and assessment result data. Primary and foreign keys preserve row identity and relationships. Unique constraints prevent duplicate course codes and duplicate student registrations for an offering; checks constrain values such as status, credits, capacity, and scores. A trigger enforces the rule that an assessment result cannot exceed the maximum score stored in another table. The student_term_results view calculates a weighted percentage and an illustrative grade point. The grade thresholds are examples, not MIVA policy. The entity relationship model and SQL are in portfolio-1-design/.
+
+The maintained seats_remaining value supports an atomic registration operation, but duplicates a value that could also be derived from enrolments. The design notes this consistency risk: production code should only change the counter through controlled registration/drop transactions and periodically reconcile it against active enrolments. The schema is a teaching model, not a production-ready university system.
+
+Query processing and optimisation
+
+The query set covers student course history/results, section registration counts, and a selective lookup by offering and enrolment status. The schema defines indexes on enrolment status/offerings, student history, assessment results, and term/course offerings. This gives query planning candidate access paths aligned with the joins and filters; each index also adds storage and write-maintenance cost.
+
+For the synthetic index comparison, a separate fixture added 5,000 records. In one local PostgreSQL 16 run, the selective lookup changed from a sequential scan and sort (5,003 rows scanned, 50 shared-buffer hits, 0.348 ms) to an index-only scan (one row returned, zero heap fetches, four shared hits and two reads, 0.147 ms). These timings are a single small, cache-sensitive observation, not a general performance guarantee. The final repository source was subsequently executed successfully in GitHub Actions. The run logs and portfolio-execution-evidence artifact are linked from https://github.com/theTemple10/Victor_Akinremi_301903671/actions/runs/43575115558. The local measurements and final-source cloud validation are recorded separately in evidence/postgresql-execution-record.md.
+
+Transactions and concurrency
+
+The register_student function serializes duplicate attempts for a student/offering pair with a transaction-scoped advisory lock. It claims capacity with a conditional update and inserts or reactivates an enrolment in the same transaction. A repeated registration returned already registered, avoiding a second seat decrement. The rollback activity changed a disposable offering row and then rolled it back.
+
+The two-session READ COMMITTED exercise showed Session A reading 38 seats, Session B registering a student and committing, and Session A’s later statement reading 37. This is consistent with a new statement snapshot observing a transaction committed in between. The script also includes a row-lock exercise for manual two-session observation. The recorded execution notes describe the completed local activities; the hosted workflow reran the transaction script as part of final-source validation.
+
+NoSQL and distributed/cloud design
+
+The MongoDB example embeds a small set of course summaries inside a student-term transcript snapshot, making the read projection available as one document. It creates a query index and applies JSON Schema validation to a course catalog example. The relational database remains authoritative for registrations and grades; the transcript is a derived, potentially stale projection that should be rebuilt from committed relational data. MongoDB documentation describes embedding as useful when related data is commonly read together, while noting the trade-offs of denormalization (MongoDB, "Embedded Data in Your MongoDB Schema", https://www.mongodb.com/docs/manual/data-modeling/embedding/). The sample ran in the hosted MongoDB service container.
+
+The distributed/cloud activity is a design proposal, not a deployment. It recommends a PostgreSQL primary for transactional writes, a synchronous standby only where latency permits, and an asynchronous copy in a separate failure domain for disaster recovery. It calls for monitoring replication lag, encrypted backups, restore/failover tests, private connectivity, and defined recovery objectives. Student-facing reads could use a replica only where stale data is acceptable. Time-based partitioning is reserved for large append-heavy logs; core tables should not be partitioned without measured need. A derived MongoDB view could be refreshed through an idempotent outbox/event process. No cloud database, replication, failover, or recovery target was provisioned or measured.
+
+Reflection, limitations, and declaration
+
+A key design lesson was that a useful index is specific to the query pattern and brings a write/storage cost; a single fast benchmark is not enough to predict production performance. The seat counter also makes the concurrency boundary visible: the capacity update and enrolment change must remain atomic and consistently controlled. The main limitations are the small synthetic dataset, illustrative grading policy, limited workload, and design-only distributed section. The portfolio should therefore be understood as a practical demonstration rather than a deployable student information system.
+
+AI-use declaration: AI assistance was used to help draft and revise parts of the schema, SQL examples, MongoDB example, workflow, and documentation. PostgreSQL scripts were executed locally and the final repository scripts were executed in the linked GitHub Actions run. I am responsible for reviewing the submitted code and evidence, verifying the claims, and being able to explain the design, output, and limitations.
+
+References
+
+1. MIVA, *MIT 8103 Advanced Database Systems: CA — September Cohort 2026*, assessment brief and LMS submission instructions.
+2. PostgreSQL Global Development Group, *PostgreSQL 16 Documentation*, https://www.postgresql.org/docs/16/ (accessed 14 November 2026).
+3. MongoDB, *Embedded Data in Your MongoDB Schema*, https://www.mongodb.com/docs/manual/data-modeling/embedding/ (accessed 14 November 2026).
+4. GitHub, *Using containerized services*, https://docs.github.com/en/actions/tutorials/use-containerized-services (accessed 14 November 2026).
+5. Akinremi, Victor, *MIT8103 Advanced Database Systems Portfolio source and execution evidence*, https://github.com/theTemple10/Victor_Akinremi_301903671 (accessed 14 November 2026).

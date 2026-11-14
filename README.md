@@ -1,31 +1,68 @@
-# MIT 8103 Advanced Database Systems Portfolio
+# MIT8103 Advanced Database Systems Portfolio
 
-**Case study:** MivaLearn, a fictional university course registration and results portal. It serves students, academic departments, lecturers, and registry staff. It stores student and course records, semester offerings, registrations, assessments, and grades. Core operations are course registration, class-capacity management, grade entry, GPA calculation, transcript retrieval, and audit review.
+This repository contains a practical database portfolio for the MIT8103 September 2026 continuous assessment. The work uses **MivaLearn**, a fictional university registration and results portal. All student and course records are synthetic; the database is not an institutional system.
 
-**Implementation assumption:** PostgreSQL 16 or later for the relational activities; MongoDB 7 or later for the document-model activity. Versions are suggested compatibility targets, not requirements stated in the CA brief. Replace them if the course environment specifies another version.
+**Author:** Victor Akinremi
 
-## Portfolio contents
+**Student ID:** 301903671
 
-1. `portfolio-1-design/` — normalized relational schema, sample data, keys and constraints.
-2. `portfolio-2-query-optimisation/` — representative queries, index choices, and commands for capturing real execution plans.
-3. `portfolio-3-transactions-concurrency/` — atomic seat allocation and transaction/isolation exercises.
-4. `portfolio-4-nosql/` — MongoDB document model and sample operations for the same case study.
-5. `portfolio-5-distributed-cloud/` — replication, partitioning, recovery, and deployment discussion.
-6. `final-summary-template.md` — draft structure for the required 2–3 page LMS summary.
-7. `evidence/` — execution notes from the local PostgreSQL run, including its limitations.
-8. `.github/workflows/portfolio-validation.yml` — cloud workflow to run PostgreSQL and MongoDB activities on pushes to `main`.
+**Public repository:** https://github.com/theTemple10/Victor_Akinremi_301903671
 
-## Run order
+**Hosted execution:** [GitHub Actions run](https://github.com/theTemple10/Victor_Akinremi_301903671/actions/runs/43575115558)
 
-Create an empty PostgreSQL database, then run `portfolio-1-design/schema.sql` followed by `portfolio-1-design/seed.sql`. Run the query and transaction scripts from that database. For a larger index comparison, use a separate disposable database, load `portfolio-2-query-optimisation/benchmark_fixture.sql`, and compare the plans before and after the index. The MongoDB examples are separate and use a database named `mivalearn`. The distributed/cloud file is a design exercise; it does not claim a live cloud deployment.
+## Scope and implementation
 
-The evidence folder records one local PostgreSQL execution and a successful hosted GitHub Actions run of the final source. The hosted workflow ran PostgreSQL schema, seed, query, transaction, and synthetic index-comparison activities, then ran the MongoDB examples. Its logs are available from the public [Portfolio execution workflow](https://github.com/theTemple10/Victor_Akinremi_301903671/actions/workflows/portfolio-validation.yml). Local benchmark timings are a single synthetic run; use the hosted workflow artifact for the final-source execution record.
+The portfolio covers relational design, SQL querying and index analysis, transaction/concurrency behavior, a MongoDB document projection, and a proposed distributed/cloud architecture. PostgreSQL is the transactional source of truth. The MongoDB transcript snapshot is a derived read model. The distributed/cloud activity is a design proposal; no production cloud service, replication topology, or failover was deployed.
 
-## Before submission
+| Directory/file | Contents |
+| --- | --- |
+| `portfolio-1-design/` | Entity relationship model, PostgreSQL schema, constraints, trigger, indexes, results view, and synthetic seed data |
+| `portfolio-2-query-optimisation/` | Representative SQL queries and a separate 5,000-row synthetic benchmark fixture |
+| `portfolio-3-transactions-concurrency/` | Atomic registration function, duplicate handling, rollback, and two-session isolation exercises |
+| `portfolio-4-nosql/` | MongoDB student/transcript documents, index, and validation example |
+| `portfolio-5-distributed-cloud/` | Proposed replication, recovery, scaling, and partitioning design with implementation limits stated |
+| `evidence/` | Local PostgreSQL execution record, caveats, and final-source hosted execution link |
+| `.github/workflows/portfolio-validation.yml` | Reproducible hosted PostgreSQL/MongoDB execution workflow |
+| `Akinremi_Victor_301903671_REPORT.md` | Final LMS summary in Markdown |
+| `Akinremi_Victor_301903671_REPORT.txt` | Plain-text LMS summary |
 
-- Replace the fictional case study or implementation choices if you used a different approved setup, and keep the choice consistent across all activities.
-- Add the public GitHub repository URL to the final summary and verify that the assessor can access it.
-- Keep a truthful commit history from the date work actually occurs; do not backdate commits or present new work as semester-long progress.
-- Complete the reflection in your own words and cite external sources, datasets, and tools.
-- Since AI assistance was used, include an accurate AI-use declaration. Verify and be ready to explain every script and design decision.
-- The brief requires a 2–3 page LMS document; this repository is supporting practical evidence, not a substitute for that submission.
+## Requirements
+
+- PostgreSQL 16 or later and `psql` for the relational activities.
+- MongoDB 7 or later and `mongosh` for the document-model activity.
+- GitHub Actions uses hosted Linux runners with PostgreSQL and MongoDB service containers; it does not require local database installation. See the workflow file for service versions and commands.
+
+These versions are tested compatibility targets used by this portfolio, not claims about a course-mandated version. The cloud workflow is evidence that the repository scripts execute in the configured environment, not evidence of a deployed production system.
+
+## Run locally
+
+Use a new, disposable PostgreSQL database. From the repository root, run:
+
+```sh
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f portfolio-1-design/schema.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f portfolio-1-design/seed.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f portfolio-2-query-optimisation/queries.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f portfolio-3-transactions-concurrency/transactions.sql
+```
+
+The benchmark fixture belongs in a separate disposable database because it adds thousands of synthetic rows and performs the index comparison. Follow the comments in `portfolio-2-query-optimisation/queries.sql` to capture `EXPLAIN (ANALYZE, BUFFERS)` before and after the index. Run `portfolio-4-nosql/mongodb.js` in a disposable MongoDB database with `mongosh`. Do not point these teaching scripts at real student data or a production database.
+
+The transaction script includes an isolation exercise that requires two sessions; follow the Session A/Session B comments in the file. `portfolio-5-distributed-cloud/design.md` is explanatory design material and has no deployment command.
+
+## Data and design notes
+
+- The schema uses primary/foreign keys, uniqueness and check constraints, a trigger for a cross-table score limit, and indexes for documented access paths.
+- `seats_remaining` is a maintained counter used to demonstrate atomic capacity allocation. In a real service it must be changed only through controlled transactions and reconciled against active registrations.
+- Grade thresholds and the 5-point grade mapping are illustrative only. They must not be treated as MIVA's grading policy.
+- The index timings in `evidence/postgresql-execution-record.md` are from one synthetic local run. They are machine/cache dependent and are not a general performance claim.
+- GitHub Actions completed the final-source PostgreSQL and MongoDB activities successfully. The Actions run page provides logs and the uploaded `portfolio-execution-evidence` artifact. A hosted validation run demonstrates execution in that configured CI environment only.
+
+## Evidence and submission
+
+The evidence folder is retained because the assessment asks for implementation outputs and performance/concurrency evidence. It distinguishes the earlier local measurements from the later CI run and explains the limits of each. Review the workflow artifact before citing specific results.
+
+The LMS requires a ZIP upload and a separate README upload. The ready-to-upload package is `Akinremi_Victor_301903671.zip`; the separate text README is `Akinremi_Victor_301903671_README.txt`. The package contains the portfolio and both final-summary formats. Filenames follow the course naming convention. Confirm the public repository and run links remain accessible at submission time.
+
+## AI-use and reproducibility
+
+AI assistance was used to draft and revise parts of the database design, SQL/scripts, documentation, and execution workflow. The scripts were run in the local PostgreSQL environment and in the hosted GitHub Actions environment documented above. The student must review the code, outputs, limitations, and sources, and be prepared to explain the submitted work. The report includes an AI-use declaration; it should accurately reflect the student's review and understanding.
