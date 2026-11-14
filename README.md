@@ -19,7 +19,7 @@
 
 Create an empty PostgreSQL database, then run `portfolio-1-design/schema.sql` followed by `portfolio-1-design/seed.sql`. Run the query and transaction scripts from that database. For a larger index comparison, use a separate disposable database, load `portfolio-2-query-optimisation/benchmark_fixture.sql`, and compare the plans before and after the index. The MongoDB examples are separate and use a database named `mivalearn`. The distributed/cloud file is a design exercise; it does not claim a live cloud deployment.
 
-The evidence folder records one local PostgreSQL execution. Its query-plan timings are a single synthetic benchmark run, and its note flags a seed-data edit that still needs a clean rerun. The MongoDB code has not yet executed locally. The GitHub Actions workflow is intended to run both databases in a temporary hosted environment after it is committed; do not claim that workflow ran until a completed Actions run is available.
+The evidence folder records one local PostgreSQL execution and a successful hosted GitHub Actions run of the final source. The hosted workflow ran PostgreSQL schema, seed, query, transaction, and synthetic index-comparison activities, then ran the MongoDB examples. Its logs are available from the public [Portfolio execution workflow](https://github.com/theTemple10/Victor_Akinremi_301903671/actions/workflows/portfolio-validation.yml). Local benchmark timings are a single synthetic run; use the hosted workflow artifact for the final-source execution record.
 
 ## Before submission
 

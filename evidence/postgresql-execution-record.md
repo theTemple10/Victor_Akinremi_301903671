@@ -26,6 +26,6 @@ These single-run timings are sensitive to cache and machine load. The useful obs
 - The explicit update followed by `ROLLBACK` completed and did not retain the update.
 - In a two-session READ COMMITTED exercise, Session A first read `seats_remaining = 38`. Session B registered synthetic student 1003 for offering 401 and committed. Session A’s later statement read `37`, then committed. This illustrates that a later statement under READ COMMITTED can observe a concurrent transaction committed between statements.
 
-## Re-run required after final seed edit
+## Final-source hosted execution
 
-After this local run, the seed was corrected so offering 403 starts with 29 seats remaining for its one registered student (it was 30 in the executed copy). Docker’s local storage then became read-only, preventing a clean rerun. The final source therefore still needs a fresh run before these outputs are treated as final submission evidence. The MongoDB script has not run locally; the current Docker engine could not download/create its temporary image.
+The local run above preceded the correction that sets offering 403 to 29 remaining seats for its one registered student. A subsequent successful GitHub Actions run executed the final repository source in hosted PostgreSQL 16 and MongoDB 7 service containers. The workflow completed the schema and seed load, SQL queries, transaction script, benchmark with and without the composite index, and MongoDB examples. The logs and uploaded `portfolio-execution-evidence` artifact are available from [workflow run 43575115558](https://github.com/theTemple10/Victor_Akinremi_301903671/actions/runs/43575115558). The local timing table above remains an earlier single-run measurement; it is not presented as the hosted benchmark result.
