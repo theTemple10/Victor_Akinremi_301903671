@@ -1,0 +1,96 @@
+name: Portfolio execution
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  execute-portfolio:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mivalearn
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mivalearn"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      mongo:
+        image: mongo:7.0-jammy
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - name: Check out portfolio
+        uses: actions/checkout@v6
+
+      - name: Execute PostgreSQL design, query, and transaction activities
+        shell: bash
+        run: |
+          set -euo pipefail
+          pg_id="$(docker ps --filter 'ancestor=postgres:16-alpine' --format '{{.ID}}' | head -n 1)"
+          test -n "$pg_id"
+          mkdir -p evidence
+          docker cp portfolio-1-design/schema.sql "$pg_id:/tmp/schema.sql"
+          docker cp portfolio-1-design/seed.sql "$pg_id:/tmp/seed.sql"
+          docker cp portfolio-2-query-optimisation/queries.sql "$pg_id:/tmp/queries.sql"
+          docker cp portfolio-3-transactions-concurrency/transactions.sql "$pg_id:/tmp/transactions.sql"
+          {
+            echo '=== PostgreSQL version ==='
+            docker exec "$pg_id" psql -U postgres -d mivalearn -Atc 'SHOW server_version'
+            echo '=== Schema ==='
+            docker exec "$pg_id" psql -v ON_ERROR_STOP=1 -U postgres -d mivalearn -f /tmp/schema.sql
+            echo '=== Synthetic seed ==='
+            docker exec "$pg_id" psql -v ON_ERROR_STOP=1 -U postgres -d mivalearn -f /tmp/seed.sql
+            echo '=== Query results and plan ==='
+            docker exec "$pg_id" psql -v ON_ERROR_STOP=1 -U postgres -d mivalearn -f /tmp/queries.sql
+            echo '=== Commit, duplicate registration, and rollback ==='
+            docker exec "$pg_id" psql -v ON_ERROR_STOP=1 -U postgres -d mivalearn -f /tmp/transactions.sql
+          } 2>&1 | tee evidence/ci-postgresql.log
+
+      - name: Compare query plans with and without the composite index
+        shell: bash
+        run: |
+          set -euo pipefail
+          pg_id="$(docker ps --filter 'ancestor=postgres:16-alpine' --format '{{.ID}}' | head -n 1)"
+          docker exec "$pg_id" createdb -U postgres mivalearn_bench
+          docker cp portfolio-1-design/schema.sql "$pg_id:/tmp/schema.sql"
+          docker cp portfolio-1-design/seed.sql "$pg_id:/tmp/seed.sql"
+          docker cp portfolio-2-query-optimisation/benchmark_fixture.sql "$pg_id:/tmp/benchmark_fixture.sql"
+          {
+            docker exec "$pg_id" psql -v ON_ERROR_STOP=1 -U postgres -d mivalearn_bench -f /tmp/schema.sql
+            docker exec "$pg_id" psql -v ON_ERROR_STOP=1 -U postgres -d mivalearn_bench -f /tmp/seed.sql
+            docker exec "$pg_id" psql -v ON_ERROR_STOP=1 -U postgres -d mivalearn_bench -f /tmp/benchmark_fixture.sql
+            echo '=== Baseline plan without enrollment_offering_status_idx ==='
+            docker exec "$pg_id" psql -v ON_ERROR_STOP=1 -U postgres -d mivalearn_bench -c 'DROP INDEX enrollment_offering_status_idx' -c 'ANALYZE enrollment' -c "EXPLAIN (ANALYZE, BUFFERS) SELECT student_id FROM enrollment WHERE offering_id = (SELECT MAX(offering_id) FROM course_offering) AND status = 'registered' ORDER BY student_id"
+            echo '=== Plan with enrollment_offering_status_idx ==='
+            docker exec "$pg_id" psql -v ON_ERROR_STOP=1 -U postgres -d mivalearn_bench -c 'CREATE INDEX enrollment_offering_status_idx ON enrollment (offering_id, status, student_id)' -c 'ANALYZE enrollment' -c "EXPLAIN (ANALYZE, BUFFERS) SELECT student_id FROM enrollment WHERE offering_id = (SELECT MAX(offering_id) FROM course_offering) AND status = 'registered' ORDER BY student_id"
+          } 2>&1 | tee evidence/ci-index-comparison.log
+
+      - name: Execute MongoDB document model
+        shell: bash
+        run: |
+          set -euo pipefail
+          mongo_id="$(docker ps --filter 'ancestor=mongo:7.0-jammy' --format '{{.ID}}' | head -n 1)"
+          test -n "$mongo_id"
+          docker cp portfolio-4-nosql/mongodb.js "$mongo_id:/tmp/mongodb.js"
+          docker exec "$mongo_id" mongosh --quiet --file /tmp/mongodb.js 2>&1 | tee evidence/ci-mongodb.log
+
+      - name: Upload execution output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portfolio-execution-evidence
+          path: evidence/*.log
+          if-no-files-found: warn
