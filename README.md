@@ -57,7 +57,6 @@ The transaction script includes an isolation exercise that requires two sessions
 - The index timings in `evidence/postgresql-execution-record.md` are from one synthetic local run. They are machine/cache dependent and are not a general performance claim.
 - GitHub Actions completed the final-source PostgreSQL and MongoDB activities successfully. The Actions run page provides logs and the uploaded `portfolio-execution-evidence` artifact. A hosted validation run demonstrates execution in that configured CI environment only.
 
-
 ## AI-use and reproducibility
 
 AI assistance was used to draft and revise parts of the database design, SQL/scripts, documentation, and execution workflow. The scripts were run in the local PostgreSQL environment and in the hosted GitHub Actions environment documented above.
